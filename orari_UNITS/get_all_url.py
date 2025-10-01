@@ -7,6 +7,7 @@ from selenium.webdriver.support.ui import Select
 from joblib import Parallel, delayed
 from datetime import datetime
 import json
+import multiprocessing
 
 def print_title():
     print(r"""
@@ -123,14 +124,6 @@ def set_anno_di_studio_e_curriculum(anno, iob_driver):
     anno2 = anno["value"]
     time.sleep(0.4)
 
-############### Inizializzazione WebDriver ####################
-# Imposta Chrome headless
-chrome_options = Options()
-chrome_options.add_argument("--headless=new")
-chrome_options.add_argument("--disable-gpu")
-chrome_options.add_argument("--window-size=1920,1080")
-chrome_options.add_argument("user-agent=UNITS Links Crawler (network lab)")
-
 
 def estrai_url(dip):
     driver = webdriver.Chrome(options=chrome_options)
@@ -195,6 +188,13 @@ def format_time(seconds: float) -> str:
     
 
 if __name__ == "__main__":
+    ############### Inizializzazione WebDriver ####################
+    # Imposta Chrome headless
+    chrome_options = Options()
+    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.add_argument("user-agent=UNITS Links Crawler (network lab)")
     URL_FORM = "https://orari.units.it/agendaweb/index.php?view=easycourse&_lang=it&include=corso"
     print_title()
     start_datetime = datetime.now()
@@ -204,8 +204,9 @@ if __name__ == "__main__":
     time.sleep(0.6)
     dipartimenti = get_dipartimenti(driver)
     driver.quit()
-    
-    risultati = Parallel(n_jobs=4)(
+
+    num_cores = max(1, multiprocessing.cpu_count() - 1)
+    risultati = Parallel(n_jobs=num_cores)(
         delayed(estrai_url)(dip) for dip in dipartimenti
     )
 
