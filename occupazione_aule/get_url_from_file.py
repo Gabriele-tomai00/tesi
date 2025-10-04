@@ -13,11 +13,29 @@ import requests
 import json
 import re
 from urllib.parse import urlencode
-
+from datetime import datetime, timedelta
 URL_sedi = "https://orari.units.it/agendaweb/combo.php?sw=rooms_"
 URL_FORM = "https://orari.units.it/agendaweb/index.php?view=rooms&include=rooms&_lang=it"
 
     
+def next_week(date_str: str) -> str:
+    print("chiamata next_monday")
+    # Riconosciamo il separatore
+    if "-" in date_str:
+        fmt = "%d-%m-%Y"
+        sep = "-"
+    elif "/" in date_str:
+        fmt = "%d/%m/%Y"
+        sep = "/"
+    else:
+        raise ValueError("Formato data non valido. Usa dd/mm/yyyy o dd-mm-yyyy.")
+    d = datetime.strptime(date_str, fmt).date()
+    days_ahead = 7 - d.weekday()
+    if days_ahead == 0:  # se già lunedì
+        days_ahead = 7
+    next_mon = d + timedelta(days=days_ahead)
+    return next_mon.strftime(f"%d{sep}%m{sep}%Y")
+
 def get_file_with_info():
     resp = requests.get(URL_sedi)
     resp.raise_for_status()
@@ -68,13 +86,13 @@ def check_date(date_str):
 
 
 def response_filter(data):
-
+    data_s = data["search_data"]["day"]
     chiavi_evento = [
         "from", "to", "room", "NomeAula", "CodiceAula",
-        "NomeSede", "CodiceSede", "name", "Prenotante_data",
+        "NomeSede", "CodiceSede", "name",
         "utenti", "orario"
     ]
-    chiavi_esterne = ["day"]
+    chiavi_esterne = ["day", "data_settimana"]
 
     filtered_data = {}
 
@@ -90,6 +108,9 @@ def response_filter(data):
             for event in data["events"]
         ]
         filtered_data["eventi"] = filtered_events
+    filtered_data["data_settimana"] = data_s
+
+    print("Dati filtrati:", filtered_data)
         
     return filtered_data
 
@@ -97,12 +118,12 @@ def response_filter(data):
 def add_keys_and_reorder(filtered_data, sedi, aule, payload):
     filtered_data["sede"] = sedi[0]['label']
     filtered_data["codice_sede"] = sedi[0]['value']
-
     ordered_data = {
         "sede": sedi[0]['label'],
         "codice_sede": sedi[0]['value'],
         "aula": aule[2]['label'],
         "codice_aula": aule[2]['valore'],
+        "data_settimana": filtered_data["data_settimana"],
         "url": build_units_url(payload),
         **filtered_data
     }
@@ -114,10 +135,9 @@ def build_units_url(payload):
     full_url = URL_FORM + separator + query_string
     return full_url
 
-def create_payload(info_room):
+def create_payload(info_room, data_settimana):
     try:
         sede = info_room["sede_code"]
-        data_settimana = info_room["data_settimana"]
         valore_aula = info_room["valore"]
     except Exception as e:
         print(f"Errore nel parsing del json: {e}")
@@ -163,6 +183,16 @@ def get_response(payload):
     except json.JSONDecodeError:
         #print(response.text)
         return None
+    
+def create_day_schedules_json(data):
+    aule = get_aule(data, sedi[0]['value'])
+    data_settimana = "15/10/2025"
+    payload = create_payload(aule[2], data_settimana)
+    data = get_response(payload)
+    filtered_data = response_filter(data)
+    final_json = add_keys_and_reorder(filtered_data, sedi, aule, payload)
+    return final_json
+    
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
@@ -172,15 +202,10 @@ if __name__ == "__main__":
         logging.error("Nessuna sede trovata, impossibile proseguire con il crowling del calendario delle aule")
         exit(1)
 
-    aule = get_aule(data, sedi[0]['value'])
-    aule[2]["data_settimana"] = "15/10/2025"
-    payload = create_payload(aule[2])
-    data = get_response(payload)
-    filtered_data = response_filter(data)
-    final_json = add_keys_and_reorder(filtered_data, sedi, aule, payload)
+    data_j = create_day_schedules_json(data)
 
     # per salvare su file
     with open("response.json", "w", encoding="utf-8") as f:
-        json.dump(final_json, f, indent=4, ensure_ascii=False)
+        json.dump(data_j, f, indent=4, ensure_ascii=False)
 
 
