@@ -280,6 +280,9 @@ def get_data(data_from_units, sede, data_inizio, data_fine):
         if response_data is None:
             print(f"Failed to retrieve data for {sede['label']} on {giorno}. URL: {build_units_url(payload)}")
             continue
+        if isinstance(response_data["events"], list) and not response_data["events"]:
+            print(f"No events found for {sede['label']} on {giorno}.")
+            continue
         json_filtered = response_filter(response_data)
         final_json.extend(json_filtered)
 
@@ -303,13 +306,12 @@ if __name__ == "__main__":
     os.makedirs(INPUT_DIR, exist_ok=True)
     data_inizio = "6-10-2025"
     data_fine = "20-11-2025"
-
+    
     resp = requests.get(URL_sedi)
     resp.raise_for_status()
     data_from_units = resp.text
 
     sedi = get_sedi(data_from_units)
-    sedi = sedi[:2]
 
     num_cores = max(1, multiprocessing.cpu_count())
     final_json = Parallel(n_jobs=num_cores)(
