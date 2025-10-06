@@ -1,7 +1,6 @@
 # Ignore results folders
-response_json_files/
-sedi/
-sedi_rag/
+calendario_lezioni_per_corso/
+orario_aule_per_sede/
 
 # Ignore Python bytecode and cache
 __pycache__/
