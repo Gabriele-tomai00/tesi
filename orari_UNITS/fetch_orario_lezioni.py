@@ -6,6 +6,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import Select
 from joblib import Parallel, delayed
 from datetime import datetime
+from datetime import date
 from datetime import timedelta
 import json
 import multiprocessing
@@ -13,20 +14,20 @@ import shutil
 import requests
 import sys
 
-def print_title(start_time, data_inizio, data_fine):
-    print(r"""
-    _____                   _ _                                    _   _    _ _   _ _____ _______ _____ 
-   / ____|                 | (_)                                  (_) | |  | | \ | |_   _|__   __/ ____|
-  | |     _ __ _____      _| |_ _ __   __ _    ___  _ __ __ _ _ __ _  | |  | |  \| | | |    | | | (___  
-  | |    | '__/ _ \ \ /\ / / | | '_ \ / _` |  / _ \| '__/ _` | '__| | | |  | | . ` | | |    | |  \___ \ 
-  | |____| | | (_) \ V  V /| | | | | | (_| | | (_) | | | (_| | |  | | | |__| | |\  |_| |_   | |  ____) |
-   \_____|_|  \___/ \_/\_/ |_|_|_| |_|\__, |  \___/|_|  \__,_|_|  |_|  \____/|_| \_|_____|  |_| |_____/ 
-                                       __/ |                                                            
-                                      |___/                                                             
-    """)
+def print_title(start_time, data_inizio, data_fine, anno_scolastico):
+    ascii_art = """
+   __     _       _                            _   _          _             _   _    _ _   _ _____ _______ _____ 
+  / _|   | |     | |                          (_) | |        (_)           (_) | |  | | \ | |_   _|__   __/ ____|
+ | |_ ___| |_ ___| |__     ___  _ __ __ _ _ __ _  | | ___ _____  ___  _ __  _  | |  | |  \| | | |    | | | (___  
+ |  _/ _ \ __/ __| '_ \   / _ \| '__/ _` | '__| | | |/ _ \_  / |/ _ \| '_ \| | | |  | | . ` | | |    | |  \___ \ 
+ | ||  __/ || (__| | | | | (_) | | | (_| | |  | | | |  __// /| | (_) | | | | | | |__| | |\  |_| |_   | |  ____) |
+ |_| \___|\__\___|_| |_|  \___/|_|  \__,_|_|  |_| |_|\___/___|_|\___/|_| |_|_|  \____/|_| \_|_____|  |_| |_____/ 
+"""
+
+    print(ascii_art)
     formatted_time = time.strftime("%H:%M:%S", time.localtime(start_time))
     print(f"Script started at {formatted_time}")
-    print(f"First date: {data_inizio}, last date: {data_fine}")
+    print(f"SCHOOL YEAR: {anno_scolastico}/{anno_scolastico+1} (first fetch date: {data_inizio.strftime("%d-%m-%Y")}, last fetch date: {data_fine.strftime("%d-%m-%Y")})")
     print(f"Starting the process to get all lessons schedule URLs from orari.units.it...\n")
 
 
@@ -129,7 +130,7 @@ def set_anno_di_studio_e_curriculum(anno, iob_driver):
     time.sleep(0.4)
 
 
-def estrai_url(dip, base_url):
+def estrai_url(dip, base_url, anno_scolastico, data_inizio):
     driver = webdriver.Chrome(options=chrome_options)
     driver.get(URL_FORM)
     time.sleep(0.4)
@@ -149,8 +150,8 @@ def estrai_url(dip, base_url):
         for anno_studio in anni_di_studio_e_curriculum:
             set_anno_di_studio_e_curriculum(anno_studio, driver)
             
-            log = dip["label"] + "  --  Corso: " + corso["label"] + "  --  Anno di studio e curriculum: " + anno_studio["label"] + "\n"
-            print(log)
+            log = "Getting " + dip["label"] + "  --  Corso: " + corso["label"] + "  --  Anno di studio e curriculum: " + anno_studio["label"]
+            print(f"\r{log}", end="", flush=True)
 
             if anno_studio["label"].strip().endswith("Comune"):
                 anno_studio["label"] += " con tutti gli altri curriculum di quel corso"
@@ -161,13 +162,13 @@ def estrai_url(dip, base_url):
 
             blocco = {
                 "url": url,
-                "anno scolastico": "2025",
+                "anno scolastico": anno_scolastico,
                 "codice dipartimento": dip["value"],
                 "codice corso": corso["value"],
                 "corso di studi": corso["label"],
                 "codice curriculum e anno corso": anno_studio["value"],
                 "anno corso e curriculum": anno_studio["label"],
-                "data settimana": "8/10/2025"
+                "data settimana": data_inizio
             }
 
             blocchi.append(blocco)
@@ -226,27 +227,17 @@ def format_time(seconds: float) -> str:
     minutes = int((seconds % 3600) // 60)
     secs = round(seconds % 60)
     if hours > 0:
-        return f"{hours}h {minutes}m {secs}s"
+        return f"{hours}h {minutes}min {secs}s"
     elif minutes > 0:
-        return f"{minutes}m {secs}s"
+        return f"{minutes}min {secs}s"
     else:
         return f"{secs}s"
 
-def next_week(date_str: str) -> str:
-    if "-" in date_str:
-        fmt = "%d-%m-%Y"
-        sep = "-"
-    elif "/" in date_str:
-        fmt = "%d/%m/%Y"
-        sep = "/"
-    else:
-        raise ValueError("Formato data non valido. Usa dd/mm/yyyy o dd-mm-yyyy.")
-    d = datetime.strptime(date_str, fmt).date()
+def next_week(d: date) -> date:
     days_ahead = 7 - d.weekday()
     if days_ahead == 0:
         days_ahead = 7
-    next_mon = d + timedelta(days=days_ahead)
-    return next_mon.strftime(f"%d{sep}%m{sep}%Y")
+    return d + timedelta(days=days_ahead)
 
 def write_json_to_file(file_name, new_content):
     data = []
@@ -263,34 +254,15 @@ def write_json_to_file(file_name, new_content):
     with open(file_name, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-def check_date(date_str, data_fine):
-    # Prova entrambi i formati
-    for fmt in ("%d/%m/%Y", "%d-%m-%Y"):
-        try:
-            input_date = datetime.strptime(date_str, fmt)
-            break
-        except ValueError:
-            continue
-    else:
-        raise ValueError("Formato data non valido. Usa dd/mm/yyyy o dd-mm-yyyy.")
 
-    # Data di riferimento
-    target_date = datetime(2025, 11, 20)
-
-    return input_date < target_date
-
-
-
-
-
-
-def get_response(info_schedule_corse, OUTPUT_DIR, url, data_fine):
+def get_response(info_schedule_corse, OUTPUT_DIR, url, BASE_URL, data_fine):
 
     print("Richiesta per:", info_schedule_corse["data settimana"])
 
-    if (not check_date(info_schedule_corse["data settimana"], data_fine)):
-        print("Data oltre il 20 gennaio dell'anno successivo, non procedo con la richiesta.")
+    if (info_schedule_corse["data settimana"] > data_fine):
+        print(f"Data oltre il {data_fine}, non procedo con la richiesta.")
         return
+
     try:
         url_specifico = info_schedule_corse["url"]
         anno_scolastico = info_schedule_corse["anno scolastico"]
@@ -326,7 +298,7 @@ def get_response(info_schedule_corse, OUTPUT_DIR, url, data_fine):
         "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
         "X-Requested-With": "XMLHttpRequest",
         "Origin": "https://orari.units.it",
-        "Referer": "https://orari.units.it/agendaweb/index.php"
+        "Referer": BASE_URL
     }
 
     response = requests.post(url, data=payload, headers=headers)
@@ -346,23 +318,32 @@ def get_response(info_schedule_corse, OUTPUT_DIR, url, data_fine):
         print(f"ATTENZIONE Orario vuoto per {codice_corso}---{codice_curriculum_e_anno_corso} in data {data_settimana}")
     next_schedule_corse = info_schedule_corse
     next_schedule_corse["data settimana"] = next_week(info_schedule_corse["data settimana"])
-    get_response(info_schedule_corse, OUTPUT_DIR, url, data_fine)
 
+
+    get_response(next_schedule_corse, OUTPUT_DIR, url, BASE_URL, data_fine)
     final_json = {**final_json, **orario_json}
-
     file_name = os.path.join(OUTPUT_DIR, f"{codice_corso}---{codice_curriculum_e_anno_corso}.json")
     write_json_to_file(file_name, final_json)   
     
 
 if __name__ == "__main__":
     start_time = time.time()
-
     if len(sys.argv) > 2:
-        data_inizio = sys.argv[1]
-        data_fine = sys.argv[2]
+        try:
+            data_inizio = sys.argv[1].strftime("%d-%m-%Y")
+            data_fine = sys.argv[2].strftime("%d-%m-%Y")
+        except Exception as e:
+            print("Errore nel parsing delle date. Usa il formato dd-mm-yyyy.")
+            sys.exit(1)
     else:
-        data_inizio = "6-11-2025"
-        data_fine = "20-02-2026"
+        data_inizio = date(2025, 11, 6)
+        #data_fine = date(2025, 11, 20)
+        data_fine = date(2026, 2, 20)
+    # la request vuole solo un anno come anno scolastico. ES 2023 per l'anno scolastico 2023/2024.
+    # quindi se la data è dopo il 15 agosto, l'anno scolastico è l'anno della data, altrimenti è l'anno precedente. 
+    # Si presume che le richieste dopo il 15 agosto siano per l'anno scolastico che inizia a settembre (prima del 15 aosto solitamente non vengono pubblicati gli orari dell'AS nuovo).
+    anno_scolastico = data_inizio.year if data_inizio >= date(data_inizio.year, 8, 15) else data_inizio.year - 1
+    print_title(start_time, data_inizio, data_fine, anno_scolastico)
 
     ############### Inizializzazione WebDriver ####################
     # Imposta Chrome headless
@@ -375,19 +356,18 @@ if __name__ == "__main__":
     URL_FORM = BASE_URL + "?view=easycourse&_lang=it&include=corso"
     URL_orari_data = "https://orari.units.it/agendaweb/grid_call.php"
 
-    print_title(start_time, data_inizio, data_fine)
     OUTPUT_DIR = "calendario_lezioni_per_corso"
 
     driver = webdriver.Chrome(options=chrome_options)
     driver.get(URL_FORM)
     time.sleep(0.6)
     dipartimenti = get_dipartimenti(driver)
-    dipartimenti = dipartimenti[:1]
+    #dipartimenti = dipartimenti[:1]
     driver.quit()
 
-    num_cores = max(1, multiprocessing.cpu_count())
+    num_cores = max(1, multiprocessing.cpu_count()*2)
     risultati = Parallel(n_jobs=num_cores)(
-        delayed(estrai_url)(dip, BASE_URL) for dip in dipartimenti
+        delayed(estrai_url)(dip, BASE_URL, anno_scolastico, data_inizio) for dip in dipartimenti
     )
 
     blocchi_finali = []
@@ -401,12 +381,9 @@ if __name__ == "__main__":
         pass
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    num_cores = max(1, multiprocessing.cpu_count())
-
-    manager = multiprocessing.Manager()
 
     Parallel(n_jobs=num_cores)(
-        delayed(get_response)(info_schedule_corse, OUTPUT_DIR, URL_orari_data, data_fine) for info_schedule_corse in blocchi_finali
+        delayed(get_response)(info_schedule_corse, OUTPUT_DIR, URL_orari_data, BASE_URL, data_fine) for info_schedule_corse in blocchi_finali
     )
 
 
