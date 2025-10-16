@@ -32,7 +32,7 @@ def print_result(start_time, data_inizio, data_fine, anno_scolastico, OUTPUT_DIR
     print(f"\n#################### RESULT ####################")
     print(f"Script started at {time.strftime("%H:%M:%S", time.localtime(start_time))} and ended at {time.strftime("%H:%M:%S", time.localtime(time.time()))}")
     print(f"SCHOOL YEAR: {anno_scolastico}/{anno_scolastico+1} (first fetch date: {data_inizio.strftime("%d-%m-%Y")}, last fetch date: {data_fine.strftime("%d-%m-%Y")})")
-    print(f"num_departments considered: {'all' if num_departments == 0 else num_departments}")
+    print(f"number of departments considered: {'all' if num_departments == 0 else num_departments}")
     print(f"Time needed: {format_time(time.time() - start_time)}")
     print(f"Results are in : /{OUTPUT_DIR}")
     print(f"################################################\n")
@@ -274,76 +274,65 @@ def write_json_to_file(file_name, new_content):
 
 
 def get_response_and_write_json_to_files(info_schedule_corse, OUTPUT_DIR, url, BASE_URL, data_fine):
+    while info_schedule_corse["data settimana"] <= data_fine:
+        print("Richiesta per:", info_schedule_corse["data settimana"])       
+        try:
+            anno_scolastico = info_schedule_corse["anno scolastico"]
+            codice_dipartimento = info_schedule_corse["codice dipartimento"]
+            codice_corso = info_schedule_corse["codice corso"]
+            corso_di_studi = info_schedule_corse["corso di studi"]
+            codice_curriculum_e_anno_corso = info_schedule_corse["codice curriculum e anno corso"]
+            anno_corso_di_studio_e_curriculum = info_schedule_corse["anno corso e curriculum"]
+            data_settimana = info_schedule_corse["data settimana"]
+        except Exception as e:
+            print(f"Errore nel parsing del json: {e}")
+            return
+        payload = {
+            "view": "easycourse",
+            "form-type": "corso",
+            "include": "corso",
+            "anno": anno_scolastico,
+            "scuola": codice_dipartimento,
+            "corso": codice_corso,
+            "anno2[]": codice_curriculum_e_anno_corso,
+            "visualizzazione_orario": "cal",
+            "date": data_settimana,
+            "_lang": "it",
+            "col_cells": "0",
+            "only_grid": "0",
+            "all_events": "0"
+        }
 
-    print("Richiesta per:", info_schedule_corse["data settimana"])
+        headers = {
+            "User-Agent": "UNITS Links Crawler (network lab)",
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "X-Requested-With": "XMLHttpRequest",
+            "Origin": "https://orari.units.it",
+            "Referer": BASE_URL
+        }
 
-    if (info_schedule_corse["data settimana"] > data_fine):
-        print(f"Data oltre il {data_fine}, non procedo con la richiesta.")
-        return
-    
-    try:
-        anno_scolastico = info_schedule_corse["anno scolastico"]
-        codice_dipartimento = info_schedule_corse["codice dipartimento"]
-        codice_corso = info_schedule_corse["codice corso"]
-        corso_di_studi = info_schedule_corse["corso di studi"]
-        codice_curriculum_e_anno_corso = info_schedule_corse["codice curriculum e anno corso"]
-        anno_corso_di_studio_e_curriculum = info_schedule_corse["anno corso e curriculum"]
-        data_settimana = info_schedule_corse["data settimana"]
-    except Exception as e:
-        print(f"Errore nel parsing del json: {e}")
-        return
+        response = requests.post(url, data=payload, headers=headers)
+        response.raise_for_status()
 
-    url_specifico = build_orario_url(anno_scolastico, codice_dipartimento, codice_corso, codice_curriculum_e_anno_corso, data_settimana, BASE_URL, lang="it")
+        url_specifico = build_orario_url(anno_scolastico, codice_dipartimento, codice_corso, codice_curriculum_e_anno_corso, data_settimana, BASE_URL, lang="it")
+        final_json = {
+            "url": url_specifico,
+            "dipartimento": codice_dipartimento,
+            "codice corso": codice_corso,
+            "corso di studi": corso_di_studi,
+            "codice anno corso di studio": codice_curriculum_e_anno_corso,
+            "anno corso e curriculum": anno_corso_di_studio_e_curriculum
+        }
 
-    payload = {
-        "view": "easycourse",
-        "form-type": "corso",
-        "include": "corso",
-        "anno": anno_scolastico,
-        "scuola": codice_dipartimento,
-        "corso": codice_corso,
-        "anno2[]": codice_curriculum_e_anno_corso,
-        "visualizzazione_orario": "cal",
-        "date": data_settimana,
-        "_lang": "it",
-        "col_cells": "0",
-        "only_grid": "0",
-        "all_events": "0"
-    }
+        orario_json = response_filter(response.json())
+        if orario_json["orario lezioni"] == []:
+            print(f"ATTENZIONE Orario vuoto per {codice_corso}---{codice_curriculum_e_anno_corso} in data {data_settimana}")
+        final_json = {**final_json, **orario_json}
+        file_name = os.path.join(OUTPUT_DIR, f"{codice_corso}---{codice_curriculum_e_anno_corso}.json")
+        write_json_to_file(file_name, final_json)  
 
-    headers = {
-        "User-Agent": "UNITS Links Crawler (network lab)",
-        "Accept": "application/json, text/javascript, */*; q=0.01",
-        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-        "X-Requested-With": "XMLHttpRequest",
-        "Origin": "https://orari.units.it",
-        "Referer": BASE_URL
-    }
-
-    response = requests.post(url, data=payload, headers=headers)
-    response.raise_for_status()
-
-    final_json = {
-        "url": url_specifico,
-        "dipartimento": codice_dipartimento,
-        "codice corso": codice_corso,
-        "corso di studi": corso_di_studi,
-        "codice anno corso di studio": codice_curriculum_e_anno_corso,
-        "anno corso e curriculum": anno_corso_di_studio_e_curriculum
-    }
-
-    orario_json = response_filter(response.json())
-    if orario_json["orario lezioni"] == []:
-        print(f"ATTENZIONE Orario vuoto per {codice_corso}---{codice_curriculum_e_anno_corso} in data {data_settimana}")
-    next_schedule_corse = info_schedule_corse
-    next_schedule_corse["data settimana"] = next_week(info_schedule_corse["data settimana"])
-
-
-    get_response_and_write_json_to_files(next_schedule_corse, OUTPUT_DIR, url, BASE_URL, data_fine)
-    final_json = {**final_json, **orario_json}
-    file_name = os.path.join(OUTPUT_DIR, f"{codice_corso}---{codice_curriculum_e_anno_corso}.json")
-    write_json_to_file(file_name, final_json)   
-    
+        info_schedule_corse["data settimana"] = next_week(info_schedule_corse["data settimana"])
 
 
 def parse_date(s):
