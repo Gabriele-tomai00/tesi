@@ -25,3 +25,9 @@ Parametri possibili:
 ```bash
     python3 occupazione_aule/fetch_calendario_aule.py
 ```
+## Scraping link da units:
+
+```bash
+    cd linkcrawler/linkcrawler/spiders
+    python3 link_spider.py
+```
