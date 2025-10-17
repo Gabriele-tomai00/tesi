@@ -17,7 +17,7 @@ Parametri possibili:
 ```bash
     python3 orari_UNITS/fetch_orario_lezioni.py
 ```
-## Recupero calendario lezioni:
+## Recupero calendario occupazione aule:
 Parametri possibili:  
 --start_date: Data di inizio nel formato dd-mm-yyyy  
 --end_date: Data di fine nel formato dd-mm-yyyy

@@ -1,16 +1,14 @@
 import time
 import os
 import shutil
-import sys
 from joblib import Parallel, delayed
-from datetime import datetime
 import json
 import multiprocessing
 import requests
 import json
 import re
 from urllib.parse import urlencode
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from collections import defaultdict
 import argparse
 
@@ -85,23 +83,7 @@ def convert_json_structure(percorso_file):
         sedi_array.append(sede_entry)
     return sedi_array
 
-def iterate_dates(start_date, end_date):
-    def parse_date(d):
-        if "/" in d:
-            return datetime.strptime(d, "%d/%m/%Y")
-        elif "-" in d:
-            return datetime.strptime(d, "%d-%m-%Y")
-        else:
-            raise ValueError("Formato data non valido")
-    
-    current = parse_date(start_date)
-    end = parse_date(end_date)
-    
-    while current <= end:
-        yield current.strftime("%d/%m/%Y")
-        current += timedelta(days=1)
-
-def get_sedi(text):
+def get_sites(text):
     match = re.search(r"var\s+elenco_sedi\s*=\s*(\[.*?\])\s*;", text, re.S)
     if not match:
         raise ValueError("Nessun elenco_aule trovato")
@@ -256,7 +238,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 def get_data(sede, data_inizio, data_fine):
     print(f"Processing sede: {sede['label']} ({sede['value']})...")
     final_json = []
-    for giorno in iterate_dates(data_inizio, data_fine):
+    giorni = [(data_inizio + timedelta(days=i)) for i in range((data_fine - data_inizio).days + 1)]
+    for giorno in giorni:
         payload = create_payload(sede["value"], giorno)
         response_data = get_response_from_request_with_payload(payload)
         if response_data is None:
@@ -274,17 +257,24 @@ def get_data(sede, data_inizio, data_fine):
 
     return final_json
 
+def parse_date(s):
+    try:
+        return datetime.strptime(s, "%d-%m-%Y").date()
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"Formato data non valido: '{s}'. Usa dd-mm-yyyy.")
 
 if __name__ == "__main__":
     start_datetime = datetime.now()
     start_time = time.time()
-    parser = argparse.ArgumentParser(description="Script per l'estrazione degli orari da orari.units.it")
+    parser = argparse.ArgumentParser(description="Script per l'estrazione del calendario delle aule da orari.units.it")
     parser.add_argument("--start_date", type=parse_date, help="Data di inizio nel formato dd-mm-yyyy", default=date(datetime.now().year, 11, 6))
     parser.add_argument("--end_date", type=parse_date, help="Data di fine nel formato dd-mm-yyyy", default=date(datetime.now().year+1, 2, 20))
+    parser.add_argument("--num_sites", type=int, help="per test posso considerare solo n sedi e non tutte, ignorare per averle tutte", default=0)
     args = parser.parse_args()
 
     data_inizio = args.start_date
     data_fine = args.end_date    # la request vuole solo un anno come anno scolastico. ES 2023 per l'anno scolastico 2023/2024.
+    num_sites = args.num_sites
 
     print_title(start_time, data_inizio, data_fine)
     
@@ -305,12 +295,16 @@ if __name__ == "__main__":
     resp.raise_for_status()
     data_from_units = resp.text
 
-    sedi = get_sedi(data_from_units)
-    # sedi = sedi[:2]  # per test, rimuovere per produzione
+    sites = get_sites(data_from_units)
+    if 0 < num_sites < len(sites):
+        sedi = sites[:num_sites]  # per test o per avere meno sedi per velocizzare
+        print(f"number of sites: {num_sites}")
+    else:
+        print(f"number of sites: all")
 
     num_cores = max(1, multiprocessing.cpu_count())
     final_json = Parallel(n_jobs=num_cores)(
-        delayed(get_data)(sede, data_inizio, data_fine) for sede in sedi
+        delayed(get_data)(site, data_inizio, data_fine) for site in sites
     )
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
