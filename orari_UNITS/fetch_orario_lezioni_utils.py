@@ -330,7 +330,7 @@ def get_response_and_write_json_to_files(info_schedule_corse, OUTPUT_DIR, url, B
             print(f"Errore nella richiesta: {e}")
             break
 
-        orario_json = response_filter(response.json())x
+        orario_json = response_filter(response.json())
         try:
             orario = orario_json["orario lezioni"]
         except Exception as e:
