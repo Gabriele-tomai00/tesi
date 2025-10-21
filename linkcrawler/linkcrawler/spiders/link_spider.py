@@ -50,7 +50,8 @@ def clean_urls(file_path="units_links.txt"):
 
 class UNITSspider(Spider):
     name = 'UNITSspider'
-    start_urls = ['https://www.units.it']
+    allowed_domains = ["portale.units.it"]
+    start_urls = ["https://portale.units.it/it"]
     start_time = None
     # Set per URL normalizzati
     visited_urls = set()
@@ -73,7 +74,7 @@ class UNITSspider(Spider):
     def __init__(self):
         self.link_extractor = LinkExtractor(
             unique=True,
-            allow_domains=["units.it"],
+            allow_domains=["portale.units.it"],
             deny_domains=["arts.units.it", "openstarts.units.it", "moodle.units.it", "moodle2.units.it", 
                           "wmail1.units.it", "cargo.units.it", "cspn.units.it", "www-amm.units.it", 
                           "inside.units.it", "flux.units.it", "centracon.units.it", "smats.units.it",
