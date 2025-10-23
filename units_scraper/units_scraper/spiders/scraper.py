@@ -13,6 +13,7 @@ class ScraperSpider(CrawlSpider):
     name = "scraper"
     allowed_domains = ["portale.units.it"]
     start_urls = ["https://portale.units.it/it"]
+    counter = 1
 
     # WHITELIST DI URL/REGEX PERMESSI (puoi aggiungere pattern)
     ALLOW_URLS = [
@@ -41,7 +42,15 @@ class ScraperSpider(CrawlSpider):
 
     def parse_item(self, response):
         print(f"Scraped: {response.url}, status: {response.status}")
-        yield response
+        parsed_content = parse_html_content(response)
+        save_webpage_to_file(response.text, parsed_content, self.counter)
+        self.counter += 1
+        item = {
+            "url": response.url,
+            "body": response.text,
+            "cleaned": parsed_content
+        }
+        yield item
 
 
     def spider_closed(self):

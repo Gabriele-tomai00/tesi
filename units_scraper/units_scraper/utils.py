@@ -1,6 +1,10 @@
 
 import datetime
 import json
+import os
+from bs4 import BeautifulSoup
+import html2text
+import w3lib
 
 def format_time(seconds: float) -> str:
     hours = int(seconds // 3600)
@@ -64,3 +68,33 @@ def remove_output_directory(dir_path = "output_bodies"):
         print(f"Output directory '{dir_path}' removed.")
     else:
         print(f"Output directory '{dir_path}' does not exist.")
+
+def parse_html_content(response) -> str:
+    # soup = BeautifulSoup(response.text, "lxml")
+    # for tag in soup(["script", "style", "footer"]):
+    #     tag.decompose()
+    # text = soup.get_text(separator="\n", strip=True)
+
+    # alternative
+    cleaned_html = w3lib.html.remove_tags_with_content(
+        response.text,
+        which_ones=('footer','script','style', 'meta', 'link', 'img')
+    )
+
+    h = html2text.HTML2Text()
+    h.ignore_links = True          # <--- non stampa gli href
+    h.ignore_images = True         # <--- nel dubbio
+    h.body_width = 0               # <--- no wrapping forzato, più leggibile
+    text = h.handle(cleaned_html)
+
+    return text
+
+def save_webpage_to_file(html_content, parsed_content, counter=1, output_dir="output_bodies"):
+    os.makedirs(output_dir, exist_ok=True)
+    original_path = os.path.join(output_dir, f"{counter}_original.html")
+    with open(original_path, "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+    cleaned_path = os.path.join(output_dir, f"{counter}_cleaned.html")
+    with open(cleaned_path, "w", encoding="utf-8") as f:
+        f.write(parsed_content)

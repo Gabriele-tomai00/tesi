@@ -9,11 +9,6 @@ import w3lib.html
 import os
 from bs4 import BeautifulSoup
 
-class RemoveFooterAndExtractTextPipeline:
-    def process_item(self, item, spider):
-        if 'body' in item:
-            item['body'] = w3lib.html.remove_tags_with_content(item['body'], which_ones=('footer','script','style', 'meta', 'link', 'img'))
-        return item
 
 class cleanContentPipeline:
     def process_item(self, item, spider):
