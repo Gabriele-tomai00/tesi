@@ -2,6 +2,7 @@
 calendario_lezioni_per_corso/
 orario_aule_per_sede/
 output_bodies/
+items.json
 # Ignore Python bytecode and cache
 __pycache__/
 *.py[cod]

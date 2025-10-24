@@ -66,27 +66,27 @@ def remove_output_directory(dir_path = "output_bodies"):
     if path.exists(dir_path) and path.isdir(dir_path):
         rmtree(dir_path)
         print(f"Output directory '{dir_path}' removed.")
-    else:
-        print(f"Output directory '{dir_path}' does not exist.")
 
-def parse_html_content(response) -> str:
-    # soup = BeautifulSoup(response.text, "lxml")
-    # for tag in soup(["script", "style", "footer"]):
-    #     tag.decompose()
-    # text = soup.get_text(separator="\n", strip=True)
+def parse_html_content_html2text(response) -> str:
+    soup = BeautifulSoup(response.text, "lxml")
+    for tag in soup(["script", "style", "footer", "meta", "link", "img"]):
+        tag.decompose()
+    for tag in soup.find_all("nav", class_=["blu", "navbar-expand-lg"]):
+        tag.decompose()
+    text = soup.get_text(separator="\n", strip=True)
+    return text
 
-    # alternative
-    cleaned_html = w3lib.html.remove_tags_with_content(
-        response.text,
-        which_ones=('footer','script','style', 'meta', 'link', 'img')
-    )
-
+def parse_html_content_html2text(response) -> str:
+    # cleaned_html = w3lib.html.remove_tags_with_content(
+    #     response.text,
+    #     which_ones=('footer','script','style', 'meta', 'link', 'img')
+    # )
     h = html2text.HTML2Text()
     h.ignore_links = True          # <--- non stampa gli href
     h.ignore_images = True         # <--- nel dubbio
     h.body_width = 0               # <--- no wrapping forzato, più leggibile
-    text = h.handle(cleaned_html)
-
+    text = h.handle(response.text)
+    #print(f"Cleaned content: {text}")
     return text
 
 def save_webpage_to_file(html_content, parsed_content, counter=1, output_dir="output_bodies"):

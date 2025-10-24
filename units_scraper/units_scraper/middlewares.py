@@ -4,11 +4,9 @@
 # https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
 from scrapy import signals
-
-# useful for handling different item types with a single interface
-from itemadapter import ItemAdapter
-
-
+from scrapy.http import HtmlResponse
+from w3lib.util import to_unicode
+import lxml.html as html
 class UnitsScraperSpiderMiddleware:
     # Not all methods need to be defined. If a method is not defined,
     # scrapy acts as if the spider middleware does not modify the
@@ -79,13 +77,36 @@ class UnitsScraperDownloaderMiddleware:
 
     def process_response(self, request, response, spider):
         # Called with the response returned from the downloader.
+        # response.body è in bytes → lo decodiamo
+        tree = html.fromstring(response.text)
+        tags_to_remove = ["footer", "script", "style", "meta", "link", "img"]
+        for tag in tags_to_remove:
+            for el in tree.xpath(f"//{tag}"):
+                el.drop_tree()
 
-        # Must either;
-        # - return a Response object
-        # - return a Request object
-        # - or raise IgnoreRequest
-        return response
+        # Classi e ID da rimuovere
+        classes_to_remove = ["open-readspeaker-ui", "banner", "cookie-consent"]
+        ids_to_remove = ["main-header", "footer-container"]
 
+        # Rimuove elementi con classi specificate
+        for class_name in classes_to_remove:
+            for el in tree.xpath(f'//*[@class="{class_name}"]'):
+                el.drop_tree()
+
+        # Rimuove elementi con ID specificati
+        for id_name in ids_to_remove:
+            for el in tree.xpath(f'//*[@id="{id_name}"]'):
+                el.drop_tree()
+
+        cleaned = html.tostring(tree, encoding="utf-8")
+
+        return HtmlResponse(
+            url=response.url,
+            body=cleaned,
+            encoding='utf-8',
+            request=request
+        )
+    
     def process_exception(self, request, exception, spider):
         # Called when a download handler or a process_request()
         # (from other downloader middleware) raises an exception.
