@@ -5,6 +5,7 @@ import os
 from bs4 import BeautifulSoup
 import html2text
 import w3lib
+import re
 
 def format_time(seconds: float) -> str:
     hours = int(seconds // 3600)
@@ -91,10 +92,100 @@ def parse_html_content_html2text(response) -> str:
 
 def save_webpage_to_file(html_content, parsed_content, counter=1, output_dir="output_bodies"):
     os.makedirs(output_dir, exist_ok=True)
-    original_path = os.path.join(output_dir, f"{counter}_original.html")
+    original_path = os.path.join(output_dir, f"{counter}_filtered.html")
     with open(original_path, "w", encoding="utf-8") as f:
         f.write(html_content)
 
-    cleaned_path = os.path.join(output_dir, f"{counter}_cleaned.html")
+    cleaned_path = os.path.join(output_dir, f"{counter}_cleaned.md")
     with open(cleaned_path, "w", encoding="utf-8") as f:
         f.write(parsed_content)
+
+def get_article_date(response):
+    # Estrai le date dai meta tag
+    modified = response.xpath('//meta[@property="article:modified_time"]/@content').get()
+    published = response.xpath('//meta[@property="article:published_time"]/@content').get()
+
+    # Prova a catturare la data con regex
+    modified_date = re.search(r'\b(\d{2}/\d{2}/\d{4})\b', modified) if modified else None
+    published_date = re.search(r'\b(\d{2}/\d{2}/\d{4})\b', published) if published else None
+
+    # Scegli la data disponibile, altrimenti oggi
+    if modified_date:
+        date = modified_date.group(1)
+    elif published_date:
+        date = published_date.group(1)
+    else:
+        date = datetime.today().strftime("%d/%m/%Y")
+
+    return date
+
+def get_metadata(response) -> dict:
+        title = response.xpath('//meta[@property="og:title"]/@content').get()
+        if not title:
+            title = response.xpath('//title/text()').get()
+
+        # --- DESCRIPTION ---
+        description = response.xpath('//meta[@name="description"]/@content').get()
+        if not description:
+            description = response.xpath('//meta[@property="og:description"]/@content').get()
+
+        return {
+            "title": title,
+            "description": description,
+            "date": get_article_date(response)
+        }
+
+import lxml.html as html
+from scrapy.http import HtmlResponse
+
+def filter_response(response):
+    # Parsing iniziale con lxml
+    tree = html.fromstring(response.text)
+    
+    # Rimuovi tag inutili
+    tags_to_remove = ["footer", "script", "style", "meta", "link", "img"]
+    for tag in tags_to_remove:
+        for el in tree.xpath(f"//{tag}"):
+            el.drop_tree()
+
+    # Classi e ID da rimuovere
+    classes_to_remove = [
+        "open-readspeaker-ui", "banner", "cookie-consent", 
+        "nav-item dropdown", "clearfix navnavbar-nav",
+        "clearfix menu menu-level-0", "sidebar", 
+        "views-field views-field-link__uri", 
+        "block block-layout-builder block-field-blocknodeeventofield-documenti-allegati",
+        "visually-hidden-focusable", "clearfix dropdown-menu", "nav-link",
+        "field__label visually-hidden", "field field--name-field-media-image field--type-image field--label-visually_hidden",
+        "clearfix nav", "modal modal-search fade", "breadcrumb", "btn dropdown-toggle",
+        "block block-menu navigation menu--menu-target", "view-content row"
+    ]
+    ids_to_remove = ["main-header", "footer-container"]
+
+    for class_name in classes_to_remove:
+        for el in tree.xpath(f'//*[@class="{class_name}"]'):
+            el.drop_tree()
+    for id_name in ids_to_remove:
+        for el in tree.xpath(f'//*[@id="{id_name}"]'):
+            el.drop_tree()
+
+    # Converti a stringa HTML
+    cleaned_html = html.tostring(tree, encoding="unicode")
+
+    # Pulizia finale con BeautifulSoup
+    soup = BeautifulSoup(cleaned_html, "lxml")
+
+    # Rimuove tag <strong> ma mantiene il testo
+    for strong_tag in soup.find_all("strong"):
+        strong_tag.unwrap()
+    # Rimuove tag vuoti
+    for tag in soup.find_all():
+        if not tag.get_text(strip=True):
+            tag.decompose()
+
+    # Restituisce la risposta pulita
+    return HtmlResponse(
+        url=response.url,
+        body=str(soup),
+        encoding='utf-8'
+    )

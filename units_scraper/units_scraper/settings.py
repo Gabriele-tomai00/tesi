@@ -47,9 +47,9 @@ DOWNLOAD_DELAY = 0
 
 # Enable or disable downloader middlewares
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
-DOWNLOADER_MIDDLEWARES = {
-   "units_scraper.middlewares.UnitsScraperDownloaderMiddleware": 543,
-}
+# DOWNLOADER_MIDDLEWARES = {
+#    "units_scraper.middlewares.UnitsScraperDownloaderMiddleware": 543,
+# }
 
 # Enable or disable extensions
 # See https://docs.scrapy.org/en/latest/topics/extensions.html
@@ -59,10 +59,11 @@ DOWNLOADER_MIDDLEWARES = {
 
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
-# ITEM_PIPELINES = {
-#     "units_scraper.pipelines.cleanContentPipeline": 200,
-#     "units_scraper.pipelines.saveBodyPipeline": 300,
-# }
+ITEM_PIPELINES = {
+   "units_scraper.pipelines.saveLinksPipeline": 100,
+   #"units_scraper.pipelines.html2textPipeline": 200
+   #  "units_scraper.pipelines.getMetadataPipeline": 200,
+}
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html

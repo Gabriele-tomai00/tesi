@@ -75,37 +75,7 @@ class UnitsScraperDownloaderMiddleware:
         #   installed downloader middleware will be called
         return None
 
-    def process_response(self, request, response, spider):
-        # Called with the response returned from the downloader.
-        # response.body è in bytes → lo decodiamo
-        tree = html.fromstring(response.text)
-        tags_to_remove = ["footer", "script", "style", "meta", "link", "img"]
-        for tag in tags_to_remove:
-            for el in tree.xpath(f"//{tag}"):
-                el.drop_tree()
 
-        # Classi e ID da rimuovere
-        classes_to_remove = ["open-readspeaker-ui", "banner", "cookie-consent"]
-        ids_to_remove = ["main-header", "footer-container"]
-
-        # Rimuove elementi con classi specificate
-        for class_name in classes_to_remove:
-            for el in tree.xpath(f'//*[@class="{class_name}"]'):
-                el.drop_tree()
-
-        # Rimuove elementi con ID specificati
-        for id_name in ids_to_remove:
-            for el in tree.xpath(f'//*[@id="{id_name}"]'):
-                el.drop_tree()
-
-        cleaned = html.tostring(tree, encoding="utf-8")
-
-        return HtmlResponse(
-            url=response.url,
-            body=cleaned,
-            encoding='utf-8',
-            request=request
-        )
     
     def process_exception(self, request, exception, spider):
         # Called when a download handler or a process_request()

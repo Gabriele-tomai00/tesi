@@ -12,20 +12,22 @@ from bs4 import BeautifulSoup
 class ScraperSpider(CrawlSpider):
     name = "scraper"
     allowed_domains = ["portale.units.it"]
-    start_urls = ["https://portale.units.it/it"]
+    start_urls = ["https://portale.units.it/it/eventi/osservazioni-sulla-tortura-dialoghi-sul-contrasto-e-sullaccertamento-di-un-reato-universale"]
     counter = 1
 
     # WHITELIST DI URL/REGEX PERMESSI (puoi aggiungere pattern)
     ALLOW_URLS = [
-        r"^https://portale\.units\.it/it$",
+        # r"^https://portale\.units\.it/it$",
+        r"^https://portale\.units\.it/it/eventi/osservazioni-sulla-tortura-dialoghi-sul-contrasto-e-sullaccertamento-di-un-reato-universale$",
         # es: r".*didattica.*", r".*studenti.*"
     ]
 
     rules = (
         Rule(
             LinkExtractor(
-             #    allow=ALLOW_URLS,          # <-- solo questi URL vengono seguiti
-                allow_domains=allowed_domains
+                # allow=ALLOW_URLS,          # <-- solo questi URL vengono seguiti
+                allow_domains=allowed_domains,
+                allow=(r"/it/"),
             ),
             callback="parse_item",
             follow=True
@@ -41,16 +43,20 @@ class ScraperSpider(CrawlSpider):
         dispatcher.connect(self.spider_closed, signals.engine_stopped)
 
     def parse_item(self, response):
-        print(f"Scraped: {response.url}, status: {response.status}")
-        parsed_content = parse_html_content_html2text(response)
-        save_webpage_to_file(response.text, parsed_content, self.counter)
+        metadata = get_metadata(response)
+        cleaned_response = filter_response(response)
+        content = parse_html_content_html2text(cleaned_response)
+        save_webpage_to_file(cleaned_response.text, content, self.counter, output_dir="output_bodies")
         self.counter += 1
         item = {
+            "title": metadata["title"],
             "url": response.url,
-            "body": response.text,
-            "cleaned": parsed_content
+            "description": metadata["description"],
+            "timestamp": metadata["date"],
+            "body": content
         }
         yield item
+
 
 
     def spider_closed(self):
