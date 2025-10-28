@@ -196,3 +196,19 @@ def filter_response(response):
         body=str(soup),
         encoding='utf-8'
     )
+
+
+def get_denied_domains_from_file():
+    """
+    Legge il file deny_domains.txt (nella stessa directory di questo file)
+    e restituisce una lista di domini (stringhe pulite).
+    """
+    # Percorso assoluto del file deny_domains.txt
+    current_dir = os.path.dirname(__file__)
+    file_path = os.path.join(current_dir, "deny_domains.txt")
+
+    # Legge le righe non vuote
+    with open(file_path, encoding="utf-8") as f:
+        domains = [line.strip() for line in f if line.strip()]
+
+    return domains

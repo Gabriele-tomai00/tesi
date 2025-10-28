@@ -11,16 +11,16 @@ import shutil
 from bs4 import BeautifulSoup
 class ScraperSpider(CrawlSpider):
     name = "scraper"
-    allowed_domains = ["portale.units.it"]
-    start_urls = ["https://portale.units.it/it/eventi/osservazioni-sulla-tortura-dialoghi-sul-contrasto-e-sullaccertamento-di-un-reato-universale"]
+    allowed_domains = ["units.it"]
+    start_urls = ["https://portale.units.it/it"]
     counter = 1
 
     # WHITELIST DI URL/REGEX PERMESSI (puoi aggiungere pattern)
-    ALLOW_URLS = [
-        # r"^https://portale\.units\.it/it$",
-        r"^https://portale\.units\.it/it/eventi/osservazioni-sulla-tortura-dialoghi-sul-contrasto-e-sullaccertamento-di-un-reato-universale$",
-        # es: r".*didattica.*", r".*studenti.*"
-    ]
+    # ALLOW_URLS = [
+    #     # r"^https://portale\.units\.it/it$",
+    #     r"^https://portale\.units\.it/it/eventi/osservazioni-sulla-tortura-dialoghi-sul-contrasto-e-sullaccertamento-di-un-reato-universale$",
+    #     # es: r".*didattica.*", r".*studenti.*"
+    # ]
 
     rules = (
         Rule(
@@ -28,6 +28,10 @@ class ScraperSpider(CrawlSpider):
                 # allow=ALLOW_URLS,          # <-- solo questi URL vengono seguiti
                 allow_domains=allowed_domains,
                 allow=(r"/it/"),
+                deny_domains=get_denied_domains_from_file(),
+                deny=[r".*feedback.*", r".*search.*", r"#", r".*eventi-passati.*", 
+                    r".*openstarts.*", r".*moodle.units.*", r".*moodle2.units.*", 
+                    r".*wmail1.*", r".*cargo.*", r".*wmail3.*", r".*wmail4.*",]
             ),
             callback="parse_item",
             follow=True
@@ -47,7 +51,7 @@ class ScraperSpider(CrawlSpider):
         metadata = get_metadata(response)
         cleaned_response = filter_response(response)
         content = parse_html_content_html2text(cleaned_response)
-        save_webpage_to_file(cleaned_response.text, content, self.counter, output_dir="output_bodies")
+        # save_webpage_to_file(cleaned_response.text, content, self.counter, output_dir="output_bodies")
         self.counter += 1
         item = {
             "title": metadata["title"],
