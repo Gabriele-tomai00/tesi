@@ -198,17 +198,41 @@ def filter_response(response):
     )
 
 
-def get_denied_domains_from_file():
+import re
+from collections import defaultdict
+
+def parse_deny_config(filename="scraper_rules.txt"):
     """
-    Legge il file deny_domains.txt (nella stessa directory di questo file)
-    e restituisce una lista di domini (stringhe pulite).
+    Legge un file di configurazione testuale con sezioni [@nome_sezione] e commenti (#).
+    
+    - Le righe vuote o che iniziano con '#' sono ignorate.
+    - Le sezioni sono indicate come [@nome_sezione].
+    - La sezione 'deny_regex' viene automaticamente compilata in pattern Python.
+    
+    Restituisce un dizionario {sezione: [valori]}.
     """
-    # Percorso assoluto del file deny_domains.txt
     current_dir = os.path.dirname(__file__)
-    file_path = os.path.join(current_dir, "deny_domains.txt")
+    file_path = os.path.join(current_dir, filename)
 
-    # Legge le righe non vuote
+    data = defaultdict(list)
+    current_section = None
+
     with open(file_path, encoding="utf-8") as f:
-        domains = [line.strip() for line in f if line.strip()]
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue  # ignora commenti e righe vuote
 
-    return domains
+            if line.startswith("[@") and line.endswith("]"):
+                # nuova sezione
+                current_section = line[2:-1].strip()
+                continue
+
+            if current_section is None:
+                raise ValueError(f"Valore fuori da una sezione: {line}")
+
+            # Sezione deny_regex: compila le stringhe in pattern regex
+            if current_section == "deny_regex":
+                data[current_section].append(line)  # mantieni come stringa
+
+    return dict(data)

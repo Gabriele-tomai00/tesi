@@ -21,23 +21,19 @@ class ScraperSpider(CrawlSpider):
     #     r"^https://portale\.units\.it/it/eventi/osservazioni-sulla-tortura-dialoghi-sul-contrasto-e-sullaccertamento-di-un-reato-universale$",
     #     # es: r".*didattica.*", r".*studenti.*"
     # ]
-
+    config = parse_deny_config()
     rules = (
         Rule(
             LinkExtractor(
-                # allow=ALLOW_URLS,          # <-- solo questi URL vengono seguiti
                 allow_domains=allowed_domains,
-                allow=(r"/it/"),
-                deny_domains=get_denied_domains_from_file(),
-                deny=[r".*feedback.*", r".*search.*", r"#", r".*eventi-passati.*", 
-                    r".*openstarts.*", r".*moodle.units.*", r".*moodle2.units.*", 
-                    r".*wmail1.*", r".*cargo.*", r".*wmail3.*", r".*wmail4.*",]
+                allow=r"/it/",
+                deny_domains=config.get("deny_domains", []),
+                deny=config.get("deny_regex", [])
             ),
             callback="parse_item",
             follow=True
         ),
     )
-
 
 
 
