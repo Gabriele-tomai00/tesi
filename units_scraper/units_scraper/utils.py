@@ -8,7 +8,9 @@ import re
 import lxml.html as html
 from scrapy.http import HtmlResponse
 import unicodedata
-
+import json
+from datetime import datetime
+from pathlib import Path
 def format_time(seconds: float) -> str:
     hours = int(seconds // 3600)
     minutes = int((seconds % 3600) // 60)
@@ -19,10 +21,16 @@ def format_time(seconds: float) -> str:
         return f"{minutes}m {secs}s"
     else:
         return f"{secs}s"
-    
-import json
-from datetime import datetime
-from pathlib import Path
+
+def get_size_of_result_file(file_path: str) -> str:
+    if os.path.exists(file_path):
+        size_bytes = os.path.getsize(file_path)
+        if size_bytes >= 1024**3:  # 1 GB
+            size_str = f"{size_bytes / (1024**3):.2f} GB"
+        else:
+            size_str = f"{size_bytes / (1024**2):.2f} MB"
+        return size_str
+    return "File not found"
 
 def print_scraping_summary(stats: dict, log_file: str = "scraping_summary.log"):
     # Stampa raw dict per debug
@@ -31,6 +39,8 @@ def print_scraping_summary(stats: dict, log_file: str = "scraping_summary.log"):
     start_time = stats.get("start_time")
     if start_time is None:
         start_time = datetime.now()
+    else:
+        print(f"Start time: {start_time.strftime('%d-%m-%Y %H:%M:%S')}")
     
     end_time = stats.get("finish_time", datetime.now())
     request_depth_max = stats.get("request_depth_max", 0)
@@ -40,14 +50,16 @@ def print_scraping_summary(stats: dict, log_file: str = "scraping_summary.log"):
         elapsed = (end_time - start_time).total_seconds()
     
     item_scraped_count = stats.get("item_scraped_count", 0)
+    file_name_of_results = "items.jsonl"
 
     summary_lines = [
-        f"\n====== SCRAPING SESSION {start_time.strftime('%Y-%m-%d %H:%M:%S')} ======",
+        f"\n====== SCRAPING SESSION {start_time.strftime('%d-%m-%Y %H:%M')} ======",
         f"🕒 elapsed time: {format_time(elapsed)}",
-        f"Start time: {start_time.strftime('%Y-%m-%d %H:%M:%S')}",
+        f"End time: {end_time.strftime('%d-%m-%Y %H:%M')}",
         f"📄 Total items scraped: {item_scraped_count}",
         f"📊 Max request depth: {request_depth_max}",
-        "==================================================="
+        f"Size of {file_name_of_results}: {get_size_of_result_file(file_name_of_results)}",
+        "==============================================="
     ]
     for line in summary_lines:
         print(line)
