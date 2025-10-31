@@ -1,9 +1,13 @@
 # Ignore results folders
 calendario_lezioni_per_corso/
 orario_aule_per_sede/
-output_bodies/
+scraper_md_output/
 items.json
 units_scraper/items.jsonl
+items.jsonl
+
+# rag
+rag_index/
 
 # Ignore Python bytecode and cache
 __pycache__/

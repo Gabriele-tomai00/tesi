@@ -10,6 +10,7 @@ import os
 import shutil
 from bs4 import BeautifulSoup
 import html2text
+from urllib.parse import urlparse
 
 
 class cleanContentPipeline:
@@ -32,7 +33,9 @@ class saveBodyPipeline:
             with open(original_path, "w", encoding="utf-8") as f:
                 f.write(item['body'])
 
-            cleaned_path = os.path.join(self.output_dir, f"{self.counter}_cleaned.html")
+            parsed_url = urlparse(item.url)
+            domain = parsed_url.netloc
+            cleaned_path = os.path.join(self.output_dir, f"{self.counter}{domain}.html")
             with open(cleaned_path, "w", encoding="utf-8") as f:
                 f.write(item['cleaned'])
 
@@ -80,7 +83,6 @@ class saveWebpagePipeline:
 class saveLinksPipeline:
     def __init__(self):
         self.file_path = "units_links.txt"
-        # Inizializza il file (cancella se esiste)
         with open(self.file_path, "w") as f:
             pass
 

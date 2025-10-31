@@ -39,24 +39,25 @@ class ScraperSpider(CrawlSpider):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        remove_output_directory("output_bodies")
+        remove_output_directory("scraper_md_output")
         dispatcher.connect(self.spider_closed, signals.engine_stopped)
 
     def parse_item(self, response):
         print(str(self.counter) + " " + response.url)
         metadata = get_metadata(response)
         cleaned_response = filter_response(response)
-        content = parse_html_content_html2text(cleaned_response)
-        # save_webpage_to_file(cleaned_response.text, content, self.counter, output_dir="output_bodies")
+        md_content = parse_html_content_html2text(cleaned_response)
         self.counter += 1
-        item = {
-            "title": metadata["title"],
-            "url": response.url,
-            "description": metadata["description"],
-            "timestamp": metadata["date"],
-            "content": content
-         }
-        yield item
+        if is_informative_markdown(md_content):
+            save_webpage_to_file(cleaned_response.text, md_content, response.url, self.counter, "scraper_md_output")
+            item = {
+                "title": metadata["title"],
+                "url": response.url,
+                "description": metadata["description"],
+                "timestamp": metadata["date"],
+                "content": md_content
+            }
+            yield item
 
 
 

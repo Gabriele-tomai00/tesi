@@ -11,6 +11,10 @@ import unicodedata
 import json
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
+from shutil import rmtree
+from os import path
+
 def format_time(seconds: float) -> str:
     hours = int(seconds // 3600)
     minutes = int((seconds % 3600) // 60)
@@ -50,7 +54,7 @@ def print_scraping_summary(stats: dict, log_file: str = "scraping_summary.log"):
         elapsed = (end_time - start_time).total_seconds()
     
     item_scraped_count = stats.get("item_scraped_count", 0)
-    file_name_of_results = "items.jsonl"
+    file_name_of_results = "../items.jsonl"
 
     summary_lines = [
         f"\n====== SCRAPING SESSION {start_time.strftime('%d-%m-%Y %H:%M')} ======",
@@ -69,7 +73,7 @@ def print_scraping_summary(stats: dict, log_file: str = "scraping_summary.log"):
             f.write(line + "\n")
 
 
-def remove_output_directory(dir_path = "output_bodies"):
+def remove_output_directory(dir_path):
     from shutil import rmtree
     from os import path
 
@@ -99,13 +103,15 @@ def parse_html_content_html2text(response) -> str:
     #print(f"Cleaned content: {text}")
     return normalize_markdown(text)
 
-def save_webpage_to_file(html_content, parsed_content, counter=1, output_dir="output_bodies"):
+def save_webpage_to_file(html_content, parsed_content, url, counter, output_dir):
     os.makedirs(output_dir, exist_ok=True)
-    original_path = os.path.join(output_dir, f"{counter}_filtered.html")
-    with open(original_path, "w", encoding="utf-8") as f:
-        f.write(html_content)
+    # original_path = os.path.join(output_dir, f"{counter}_filtered.html")
+    # with open(original_path, "w", encoding="utf-8") as f:
+    #     f.write(html_content)
 
-    cleaned_path = os.path.join(output_dir, f"{counter}_cleaned.md")
+    parsed_url = urlparse(url)
+    domain = parsed_url.netloc
+    cleaned_path = os.path.join(output_dir, f"{counter}_{domain}.md")
     with open(cleaned_path, "w", encoding="utf-8") as f:
         f.write(parsed_content)
 
@@ -248,3 +254,20 @@ def parse_deny_config(filename="scraper_rules.txt"):
                 data[current_section].append(line)  # mantieni come stringa
 
     return dict(data)
+
+
+def is_informative_markdown(text: str) -> bool:
+    # remove markdown titles
+    cleaned = re.sub(r'#+\s*.*', '', text)
+    # remove common footer/header phrases
+    cleaned = re.sub(r'\b(Tutti gli avvisi|Link utili|Contatti|Servizi|Servizi digitali|Servizi di segreteria|Dipartimenti|Vai alla pagina)\b',
+                     '', cleaned, flags=re.IGNORECASE) 
+    # divide into lines and remove non-meaningful ones (less than 2 words)
+    lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
+    meaningful_lines = [line for line in lines if len(line.split()) >= 2]
+    # calculate word count
+    cleaned_text = " ".join(meaningful_lines)
+    word_count = len(cleaned_text.split())
+    # criteria: at least 20 words total and at least 2 meaningful lines
+    return word_count > 20 and len(meaningful_lines) > 1
+

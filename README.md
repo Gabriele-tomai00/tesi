@@ -29,7 +29,7 @@ Parametri possibili:
 
 ```bash
     cd units_scraper
-    scrapy crawl scraper -s DEPTH_LIMIT=3 -O items.jsonl
+    scrapy crawl scraper -s DEPTH_LIMIT=1 -O ../items.jsonl
 ```  
 ```bash
     cd linkcrawler/linkcrawler/spiders
