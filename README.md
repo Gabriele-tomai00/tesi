@@ -1,12 +1,14 @@
-Prima di eseguire questo codice, è necessario creare un ambiente Python dedicato (ad esempio utilizzando `venv` o `conda`). Su macos puoi fare:
-```bash
-    python3 -m venv env
-    source env/bin/activate 
-```
-installare i seguenti programmi (su ubuntu)
+
+Installare i seguenti programmi (su ubuntu)
 ```bash
     curl -fsSL https://ollama.com/install.sh | sh
     sudo apt install python3-scrapy -y
+```
+Prima di eseguire questo codice, è necessario creare un ambiente Python dedicato (ad esempio utilizzando `venv` o `conda`). Su macos puoi fare:
+```bash
+    sudo apt-get install python3.10-venv -y
+    python3 -m venv env
+    source env/bin/activate 
 ```
 e installare tutte le dipendenze richieste eseguendo il comando:
 ```bash
