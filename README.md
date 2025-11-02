@@ -3,6 +3,11 @@ Prima di eseguire questo codice, è necessario creare un ambiente Python dedicat
     python3 -m venv env
     source env/bin/activate 
 ```
+installare i seguenti programmi (su ubuntu)
+```bash
+    curl -fsSL https://ollama.com/install.sh | sh
+    sudo apt install python3-scrapy -y
+```
 e installare tutte le dipendenze richieste eseguendo il comando:
 ```bash
     pip install -r requirements.txt
@@ -31,7 +36,9 @@ Parametri possibili:
     cd units_scraper
     scrapy crawl scraper -s DEPTH_LIMIT=1 -O ../items.jsonl
 ```  
+
+# RAG:
 ```bash
-    cd linkcrawler/linkcrawler/spiders
-    python3 link_spider.py
+    cd rag
+    python3 rag.py
 ```
