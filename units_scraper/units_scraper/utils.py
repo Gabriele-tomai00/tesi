@@ -13,6 +13,61 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
+deny_domains = [
+    "arts.units.it",
+    "openstarts.units.it",
+    "moodle.units.it",
+    "moodle2.units.it",
+    "wmail1.units.it",
+    "cargo.units.it",
+    "cspn.units.it",
+    "www-amm.units.it",
+    "inside.units.it",
+    "flux.units.it",
+    "centracon.units.it",
+    "smats.units.it",
+    "docenti.units.it",
+    "orari.units.it",
+    "pregresso.sba.units.it",
+    "dryades.units.it",
+    "stream.dia.units.it",
+    "esse3.units.it",
+    "esse3web.units.it",
+    "biblio.units.it",
+    "apply.units.it",
+    "docu.units.it",
+    "100anni.units.it",
+    "rendiconti.dmi.units.it",
+    "dmi.units.it",
+    "wireless.units.it",
+    "byzantine.units.it",
+    "voip.units.it",
+    "eut.units.it",
+    "webmail.sp.units.it",
+    "cloudmail.units.it",
+    "cloudmail.studenti.units.it",
+    "mail.scfor.units.it",
+    "wmail2.units.it",
+    "suggerimenti.units.it",
+    "sebina.units.it",
+]
+deny_regex = [
+    r".*feedback.*",
+    r".*search.*",
+    r".*eventi-passati.*",
+    r".*openstarts.*",
+    r".*moodle.units.*",
+    r".*moodle2.units.*",
+    r".*wmail1.*",
+    r".*cargo.*",
+    r".*wmail3.*",
+    r".*wmail4.*",
+    r".*@.*",
+    r".*facebook.*",
+    r".*instagram.*",
+    r".*notizie.*",
+]
+
 def format_time(seconds: float) -> str:
     hours = int(seconds // 3600)
     minutes = int((seconds % 3600) // 60)
@@ -42,6 +97,7 @@ def print_scraping_summary(stats: dict, rotate_user_agent, summary_file_name: st
     elapsed = stats.get("elapsed_time_seconds", (end_time - start_time).total_seconds())
     request_depth_max = stats.get("request_depth_max", 0)
     item_scraped_count = stats.get("item_scraped_count", 0)
+    responses_per_minute = int(float(stats.get("responses_per_minute") or 0))
     file_name_of_results = "../items.jsonl"
 
     proxy_used = stats.get("proxy/used", 0)
@@ -63,6 +119,7 @@ def print_scraping_summary(stats: dict, rotate_user_agent, summary_file_name: st
         f"Elapsed time: {format_time(elapsed)}",
         f"End time: {end_time.strftime('%d-%m-%Y %H:%M')}",
         f"Total items scraped: {item_scraped_count}",
+        f"Responses per minute: {responses_per_minute}",
         f"Max request depth: {request_depth_max}",
         f"Use of multiple user agents: {rotate_user_agent}",
         f"{proxy_summary}",
@@ -226,47 +283,6 @@ def filter_response(response):
         encoding='utf-8'
     )
 
-
-import re
-from collections import defaultdict
-
-def parse_deny_config(filename="scraper_rules.txt"):
-    """
-    Legge un file di configurazione testuale con sezioni [@nome_sezione] e commenti (#).
-    
-    - Le righe vuote o che iniziano con '#' sono ignorate.
-    - Le sezioni sono indicate come [@nome_sezione].
-    - La sezione 'deny_regex' viene automaticamente compilata in pattern Python.
-    
-    Restituisce un dizionario {sezione: [valori]}.
-    """
-    current_dir = os.path.dirname(__file__)
-    file_path = os.path.join(current_dir, filename)
-
-    data = defaultdict(list)
-    current_section = None
-
-    with open(file_path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue  # ignora commenti e righe vuote
-
-            if line.startswith("[@") and line.endswith("]"):
-                # nuova sezione
-                current_section = line[2:-1].strip()
-                continue
-
-            if current_section is None:
-                raise ValueError(f"Valore fuori da una sezione: {line}")
-
-            # Sezione deny_regex: compila le stringhe in pattern regex
-            if current_section == "deny_regex":
-                data[current_section].append(line)  # mantieni come stringa
-
-    return dict(data)
-
-
 def is_informative_markdown(text: str) -> bool:
     # remove markdown titles
     cleaned = re.sub(r'#+\s*.*', '', text)
@@ -291,4 +307,3 @@ def print_log(response, counter):
         print(f"{counter} {response.url}  → via PROXY {current_proxy}  |  UA: {ua_preview}")
     else:
         print(f"{counter} {response.url}  → direct (no proxy)  |  UA: {ua_preview}")
-

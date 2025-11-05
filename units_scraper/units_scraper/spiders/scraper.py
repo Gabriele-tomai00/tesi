@@ -1,41 +1,26 @@
 from scrapy.spiders import CrawlSpider, Rule
 from scrapy.linkextractors import LinkExtractor
-from urllib.parse import urlparse
-import time
-from datetime import datetime
 from units_scraper.utils import *
 from pydispatch import dispatcher
 from scrapy import signals
-import os
-import shutil
-from bs4 import BeautifulSoup
 class ScraperSpider(CrawlSpider):
     name = "scraper"
     allowed_domains = ["units.it"]
     start_urls = ["https://portale.units.it/it"]
     counter = 1
 
-    # WHITELIST DI URL/REGEX PERMESSI (puoi aggiungere pattern)
-    # ALLOW_URLS = [
-    #     # r"^https://portale\.units\.it/it$",
-    #     r"^https://portale\.units\.it/it/eventi/osservazioni-sulla-tortura-dialoghi-sul-contrasto-e-sullaccertamento-di-un-reato-universale$",
-    #     # es: r".*didattica.*", r".*studenti.*"
-    # ]
-    config = parse_deny_config()
     rules = (
         Rule(
             LinkExtractor(
                 allow_domains=allowed_domains,
                 allow=r"/it/",
-                deny_domains=config.get("deny_domains", []),
-                deny=config.get("deny_regex", [])
+                deny_domains= deny_domains,
+                deny= deny_regex
             ),
             callback="parse_item",
             follow=True
         ),
     )
-
-
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
