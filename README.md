@@ -33,11 +33,20 @@ Parametri possibili:
     python3 occupazione_aule/fetch_calendario_aule.py
 ```
 ## Scraping link da units:
+È richiesto un file .env nella root di questo tipo:
+```
+SCRAPY_PROXY_URL=https://ip:port
+SCRAPY_PROXY_USER=username
+SCRAPY_PROXY_PASS=password
+SCRAPY_PROXY_RATE=0.4
+```
+Il proxy rate va da 0.0 a 1.0 e serve per indicare la percentuale di richieste che si vuole fare con il proxy.
+È possibile avviare lo scaper con i seguenti comandi:
 
 ```bash
     cd units_scraper
-    scrapy crawl scraper -s DEPTH_LIMIT=1 -O ../items.jsonl
-```  
+    scrapy crawl scraper -s DEPTH_LIMIT=1 -s USE_PROXY=True -O ../items.jsonl
+```
 
 # RAG:
 ```bash

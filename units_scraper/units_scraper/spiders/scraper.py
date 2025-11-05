@@ -43,7 +43,8 @@ class ScraperSpider(CrawlSpider):
         dispatcher.connect(self.spider_closed, signals.engine_stopped)
 
     def parse_item(self, response):
-        print(str(self.counter) + " " + response.url)
+        print_log(response, self.counter)
+
         metadata = get_metadata(response)
         cleaned_response = filter_response(response)
         md_content = parse_html_content_html2text(cleaned_response)

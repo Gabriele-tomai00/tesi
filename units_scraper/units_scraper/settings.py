@@ -6,6 +6,8 @@
 #     https://docs.scrapy.org/en/latest/topics/settings.html
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
+import os
+from dotenv import load_dotenv
 
 BOT_NAME = "units_scraper"
 
@@ -47,9 +49,17 @@ DOWNLOAD_DELAY = 0
 
 # Enable or disable downloader middlewares
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
-# DOWNLOADER_MIDDLEWARES = {
-#    "units_scraper.middlewares.UnitsScraperDownloaderMiddleware": 543,
-# }
+load_dotenv()
+PROXY_URL = os.getenv("SCRAPY_PROXY_URL")
+PROXY_USER = os.getenv("SCRAPY_PROXY_USER")
+PROXY_PASS = os.getenv("SCRAPY_PROXY_PASS")
+PROXY_RATE = float(os.getenv("SCRAPY_PROXY_RATE"))
+print(f"[DEBUG] PROXY_URL={PROXY_URL}, USER={PROXY_USER}, PASS={PROXY_PASS}, RATE={PROXY_RATE}")
+
+DOWNLOADER_MIDDLEWARES = {
+    'units_scraper.middlewares.SelectiveProxyMiddleware': 100,
+    'scrapy.downloadermiddlewares.httpproxy.HttpProxyMiddleware': 110,
+}
 
 # Enable or disable extensions
 # See https://docs.scrapy.org/en/latest/topics/extensions.html

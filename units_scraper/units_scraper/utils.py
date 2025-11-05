@@ -37,32 +37,36 @@ def get_size_of_result_file(file_path: str) -> str:
     return "File not found"
 
 def print_scraping_summary(stats: dict, log_file: str = "scraping_summary.log"):
-    # Stampa raw dict per debug
     print(json.dumps(stats, indent=4, default=str))
 
-    start_time = stats.get("start_time")
-    if start_time is None:
-        start_time = datetime.now()
-    else:
-        print(f"Start time: {start_time.strftime('%d-%m-%Y %H:%M:%S')}")
-    
+    start_time = stats.get("start_time", datetime.now())
     end_time = stats.get("finish_time", datetime.now())
+    elapsed = stats.get("elapsed_time_seconds", (end_time - start_time).total_seconds())
     request_depth_max = stats.get("request_depth_max", 0)
-
-    elapsed = stats.get("elapsed_time_seconds")
-    if elapsed is None:
-        elapsed = (end_time - start_time).total_seconds()
-    
     item_scraped_count = stats.get("item_scraped_count", 0)
     file_name_of_results = "../items.jsonl"
 
+    proxy_used = stats.get("proxy/used", 0)
+    proxy_not_used = stats.get("proxy/not_used", 0)
+    proxy_disabled = stats.get("proxy/disabled", 0)
+    proxy_total = proxy_used + proxy_not_used + proxy_disabled
+
+    if proxy_total > 0:
+        if proxy_disabled > 0 and proxy_used == 0:
+            proxy_summary = "🌐 Proxy disabled for this run"
+        else:
+            proxy_percent = (proxy_used / proxy_total) * 100
+            proxy_summary = f"🌐 Proxy usage: {proxy_percent:.1f}% ({proxy_used}/{proxy_total})"
+    else:
+        proxy_summary = "🌐 Proxy usage: No data"
     summary_lines = [
         f"\n====== SCRAPING SESSION {start_time.strftime('%d-%m-%Y %H:%M')} ======",
-        f"🕒 elapsed time: {format_time(elapsed)}",
-        f"End time: {end_time.strftime('%d-%m-%Y %H:%M')}",
+        f"🕒 Elapsed time: {format_time(elapsed)}",
+        f"🕒 End time: {end_time.strftime('%d-%m-%Y %H:%M')}",
         f"📄 Total items scraped: {item_scraped_count}",
         f"📊 Max request depth: {request_depth_max}",
-        f"Size of {file_name_of_results}: {get_size_of_result_file(file_name_of_results)}",
+        proxy_summary,
+        f"💾 Output size: {get_size_of_result_file(file_name_of_results)}",
         "==============================================="
     ]
     for line in summary_lines:
@@ -271,3 +275,11 @@ def is_informative_markdown(text: str) -> bool:
     # criteria: at least 20 words total and at least 2 meaningful lines
     return word_count > 20 and len(meaningful_lines) > 1
 
+def print_log(response, counter):
+    current_proxy = response.meta.get("proxy")
+    user_agent = response.request.headers.get("User-Agent", b"").decode("utf-8")
+
+    if current_proxy:
+        print(f"{counter} {response.url}  → via PROXY {current_proxy}")
+    else:
+        print(f"{counter} {response.url}  → direct (no proxy)")
