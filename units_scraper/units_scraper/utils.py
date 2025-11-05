@@ -12,8 +12,6 @@ import json
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
-from shutil import rmtree
-from os import path
 
 def format_time(seconds: float) -> str:
     hours = int(seconds // 3600)
@@ -36,7 +34,7 @@ def get_size_of_result_file(file_path: str) -> str:
         return size_str
     return "File not found"
 
-def print_scraping_summary(stats: dict, rotate_user_agent, log_file: str = "scraping_summary.log"):
+def print_scraping_summary(stats: dict, rotate_user_agent, summary_file_name: str = "scraping_summary.log"):
     print(json.dumps(stats, indent=4, default=str))
 
     start_time = stats.get("start_time", datetime.now())
@@ -53,12 +51,12 @@ def print_scraping_summary(stats: dict, rotate_user_agent, log_file: str = "scra
 
     if proxy_total > 0:
         if proxy_disabled > 0 and proxy_used == 0:
-            proxy_summary = "🌐 Proxy disabled for this run"
+            proxy_summary = "Proxy disabled for this run"
         else:
             proxy_percent = (proxy_used / proxy_total) * 100
-            proxy_summary = f"🌐 Proxy usage: {proxy_percent:.1f}% ({proxy_used}/{proxy_total})"
+            proxy_summary = f"Proxy usage: {proxy_percent:.1f}% ({proxy_used}/{proxy_total})"
     else:
-        proxy_summary = "🌐 Proxy usage: No data"
+        proxy_summary = "Proxy usage: No data"
 
     summary_lines = [
         f"\n====== SCRAPING SESSION {start_time.strftime('%d-%m-%Y %H:%M')} ======",
@@ -67,13 +65,21 @@ def print_scraping_summary(stats: dict, rotate_user_agent, log_file: str = "scra
         f"Total items scraped: {item_scraped_count}",
         f"Max request depth: {request_depth_max}",
         f"Use of multiple user agents: {rotate_user_agent}",
+        f"{proxy_summary}",
         f"Output size: {get_size_of_result_file(file_name_of_results)}",
         "==============================================="
     ]
     for line in summary_lines:
         print(line)
-    log_path = Path(log_file)
-    with log_path.open("a", encoding="utf-8") as f:
+
+    # Individua la root della repo risalendo fino a 'units_scraper' principale
+    current_file = Path(__file__).resolve()
+    repo_root = current_file.parents[1]  # sale di 2 livelli fino a 'units_scraper' root
+
+    log_file = repo_root / summary_file_name
+
+    # Scrittura del log
+    with log_file.open("a", encoding="utf-8") as f:
         for line in summary_lines:
             f.write(line + "\n")
 
