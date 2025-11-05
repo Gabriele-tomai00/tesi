@@ -63,5 +63,6 @@ class ScraperSpider(CrawlSpider):
 
 
     def spider_closed(self):
-        print_scraping_summary(self.crawler.stats.get_stats())
+        rotate_user_agent = self.settings.getbool("ROTARY_USER_AGENT", True)
+        print_scraping_summary(self.crawler.stats.get_stats(), rotate_user_agent, "scraping_summary.log")
 

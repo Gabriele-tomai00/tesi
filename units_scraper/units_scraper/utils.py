@@ -36,7 +36,7 @@ def get_size_of_result_file(file_path: str) -> str:
         return size_str
     return "File not found"
 
-def print_scraping_summary(stats: dict, log_file: str = "scraping_summary.log"):
+def print_scraping_summary(stats: dict, rotate_user_agent, log_file: str = "scraping_summary.log"):
     print(json.dumps(stats, indent=4, default=str))
 
     start_time = stats.get("start_time", datetime.now())
@@ -59,14 +59,15 @@ def print_scraping_summary(stats: dict, log_file: str = "scraping_summary.log"):
             proxy_summary = f"🌐 Proxy usage: {proxy_percent:.1f}% ({proxy_used}/{proxy_total})"
     else:
         proxy_summary = "🌐 Proxy usage: No data"
+
     summary_lines = [
         f"\n====== SCRAPING SESSION {start_time.strftime('%d-%m-%Y %H:%M')} ======",
-        f"🕒 Elapsed time: {format_time(elapsed)}",
-        f"🕒 End time: {end_time.strftime('%d-%m-%Y %H:%M')}",
-        f"📄 Total items scraped: {item_scraped_count}",
-        f"📊 Max request depth: {request_depth_max}",
-        proxy_summary,
-        f"💾 Output size: {get_size_of_result_file(file_name_of_results)}",
+        f"Elapsed time: {format_time(elapsed)}",
+        f"End time: {end_time.strftime('%d-%m-%Y %H:%M')}",
+        f"Total items scraped: {item_scraped_count}",
+        f"Max request depth: {request_depth_max}",
+        f"Use of multiple user agents: {rotate_user_agent}",
+        f"Output size: {get_size_of_result_file(file_name_of_results)}",
         "==============================================="
     ]
     for line in summary_lines:
@@ -278,8 +279,10 @@ def is_informative_markdown(text: str) -> bool:
 def print_log(response, counter):
     current_proxy = response.meta.get("proxy")
     user_agent = response.request.headers.get("User-Agent", b"").decode("utf-8")
+    ua_preview = user_agent[:20] + ("..." if len(user_agent) > 50 else "")
 
     if current_proxy:
-        print(f"{counter} {response.url}  → via PROXY {current_proxy}")
+        print(f"{counter} {response.url}  → via PROXY {current_proxy}  |  UA: {ua_preview}")
     else:
-        print(f"{counter} {response.url}  → direct (no proxy)")
+        print(f"{counter} {response.url}  → direct (no proxy)  |  UA: {ua_preview}")
+

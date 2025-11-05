@@ -19,7 +19,13 @@ DEPTH_LIMIT = 1
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 USER_AGENT = "units_scraper (network lab)"
-
+USER_AGENTS = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15'
+]
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = True
 
@@ -59,6 +65,7 @@ print(f"[DEBUG] PROXY_URL={PROXY_URL}, USER={PROXY_USER}, PASS={PROXY_PASS}, RAT
 DOWNLOADER_MIDDLEWARES = {
     'units_scraper.middlewares.SelectiveProxyMiddleware': 100,
     'scrapy.downloadermiddlewares.httpproxy.HttpProxyMiddleware': 110,
+    'units_scraper.middlewares.UARotatorMiddleware': 400,
 }
 
 # Enable or disable extensions

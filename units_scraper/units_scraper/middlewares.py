@@ -148,3 +148,20 @@ class SelectiveProxyMiddleware:
             request.meta.pop("proxy", None)
             request.headers.pop("Proxy-Authorization", None)
             stats.inc_value("proxy/not_used")
+
+class UARotatorMiddleware:
+    def __init__(self, user_agents, rotate=True):
+        self.user_agents = user_agents
+        self.rotate = rotate
+
+    @classmethod
+    def from_crawler(cls, crawler):
+        rotate = crawler.settings.getbool("ROTARY_USER_AGENT", True)
+        user_agents = crawler.settings.get('USER_AGENTS', [])
+        return cls(user_agents, rotate)
+
+    def process_request(self, request, spider):
+        if self.rotate and self.user_agents:
+            user_agent = random.choice(self.user_agents)
+            request.headers['User-Agent'] = user_agent
+
