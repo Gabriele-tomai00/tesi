@@ -52,3 +52,4 @@ sebina.units.it
 .*@.*
 .*facebook.*
 .*instagram.*
+.*notizie.*
