@@ -31,19 +31,16 @@ class ScraperSpider(CrawlSpider):
         print_log(response, self.counter, self.crawler.settings)
 
         metadata = get_metadata(response)
-        cleaned_response = filter_response(response)
-        md_content = parse_html_content_html2text(cleaned_response)
         self.counter += 1
-        if is_informative_markdown(md_content):
             #save_webpage_to_file(cleaned_response.text, md_content, response.url, self.counter, "scraper_md_output")
-            item = {
-                "title": metadata["title"],
-                "url": response.url,
-                "description": metadata["description"],
-                "timestamp": metadata["date"],
-                "content": md_content
-            }
-            yield item
+        item = {
+            "title": metadata["title"],
+            "url": response.url,
+            "description": metadata["description"],
+            "timestamp": metadata["date"],
+            "content": response.text
+        }
+        yield item
 
 
 

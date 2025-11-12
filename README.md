@@ -52,6 +52,11 @@ Opzioni:
 -s ROTARY_USER_AGENT    attivare la rotazione dello user agent
 -s USE_PROXY            attivare la possibilità di usare il proxy per una % di request sul totale
 ```
+## Conversione da html a markdown:
+da eseguire dopo lo scraping
+```bash
+    python pages_cleaner.py --input items.jsonl --output filtered_items.jsonl --verbose
+```
 
 # RAG:
 ```bash

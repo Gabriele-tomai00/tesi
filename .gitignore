@@ -6,6 +6,7 @@ items.json
 units_scraper/items.jsonl
 items.jsonl
 units_scraper/units_scraper/units_links.txt
+filtered_items.jsonl
 
 # proxy
 .env
