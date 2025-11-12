@@ -198,7 +198,7 @@ def get_article_date(response):
     elif published_date:
         date = published_date.group(1)
     else:
-        date = datetime.today().strftime("%d/%m/%Y")
+        date = ""
 
     return date
 
