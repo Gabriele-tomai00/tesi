@@ -45,5 +45,5 @@ class ScraperSpider(CrawlSpider):
 
 
     def spider_closed(self):
-        print_scraping_summary(self.crawler.stats.get_stats(), self.settings, "scraping_summary.log")
+        print_scraping_summary(self.crawler.stats.get_stats(), self.settings, "../results/scraping_summary.log")
 

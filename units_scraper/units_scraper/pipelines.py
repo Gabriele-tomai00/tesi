@@ -82,7 +82,7 @@ class saveWebpagePipeline:
 
 class saveLinksPipeline:
     def __init__(self):
-        self.file_path = "units_links.txt"
+        self.file_path = "../results/units_links.txt"
         with open(self.file_path, "w") as f:
             pass
 

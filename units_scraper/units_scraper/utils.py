@@ -89,7 +89,7 @@ def get_size_of_result_file(file_path: str) -> str:
         return size_str
     return "File not found"
 
-def print_scraping_summary(stats: dict, settings, summary_file_name: str = "scraping_summary.log"):
+def print_scraping_summary(stats: dict, settings, summary_file_name):
     print(json.dumps(stats, indent=4, default=str))
 
     start_time = stats.get("start_time", datetime.now())
@@ -98,7 +98,7 @@ def print_scraping_summary(stats: dict, settings, summary_file_name: str = "scra
     request_depth_max = stats.get("request_depth_max", 0)
     item_scraped_count = stats.get("item_scraped_count", 0)
     responses_per_minute = int(float(stats.get("responses_per_minute") or 0))
-    file_name_of_results = "../items.jsonl"
+    file_name_of_results = "../results/items.jsonl"
 
     proxy_used = stats.get("proxy/used", 0)
     proxy_not_used = stats.get("proxy/not_used", 0)
@@ -129,16 +129,11 @@ def print_scraping_summary(stats: dict, settings, summary_file_name: str = "scra
     for line in summary_lines:
         print(line)
 
-    # Individua la root della repo risalendo fino a 'units_scraper' principale
-    current_file = Path(__file__).resolve()
-    repo_root = current_file.parents[1]  # sale di 2 livelli fino a 'units_scraper' root
-
-    log_file = repo_root / summary_file_name
-
-    # Scrittura del log
-    with log_file.open("a", encoding="utf-8") as f:
+    with open(summary_file_name, "a", encoding="utf-8") as f:
         for line in summary_lines:
             f.write(line + "\n")
+    print(f"'{summary_file_name}' updated")
+
 
 
 def remove_output_directory(dir_path):
