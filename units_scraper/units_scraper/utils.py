@@ -66,7 +66,7 @@ deny_regex = [
     r".*facebook.*",
     r".*instagram.*",
     r".*notizie.*",
-    # r".*ricerca/progetti.*", # there are a lot of research projects, maybe useful
+    r".*ricerca/progetti.*", # there are a lot of research projects, maybe useful
 ]
 
 def format_time(seconds: float) -> str:
