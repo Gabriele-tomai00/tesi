@@ -9,6 +9,44 @@ import argparse
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor
 import multiprocessing
+import os
+import shutil
+from urllib.parse import urlparse
+from collections import Counter
+
+output_dir_FILTERED_HTML = "results/filtered_html_output/"
+output_dir_CLEANED_MD = "results/cleaned_md_output/"
+counter_html = 0  # global counter for saved files
+counter_md = 0
+
+def sanitize_filename(name: str) -> str:
+    # sostituisce tutti i caratteri non validi con _
+    return re.sub(r'[\\/?:*"<>|]', '_', name)
+
+
+def save_filtered_html_to_file(url, parsed_content):
+    global counter_html
+    header = f"<!-- Original URL: {url} -->\n"
+    url=urlparse(url)
+    url = sanitize_filename(url.netloc + url.path)
+    cleaned_path = os.path.join(output_dir_FILTERED_HTML, f"{url}.html")
+    # inserisco il commento HTML con l'URL originale
+
+    with open(cleaned_path, "w", encoding="utf-8") as f:
+        f.write(header)
+        f.write(parsed_content)
+
+    counter_html += 1
+
+def save_md_to_file(url, parsed_content):
+    global counter_md
+    header = f"<!-- Original URL: {url} -->\n"
+    url=urlparse(url)
+    url = sanitize_filename(url.netloc + url.path)
+    cleaned_path = os.path.join(output_dir_CLEANED_MD, f"{url}.md")
+    with open(cleaned_path, "w", encoding="utf-8") as f:
+        f.write(parsed_content)
+    counter_md += 1
 
 def filter_response(html_content: str) -> str:
     """Cleans HTML by removing tags, classes, IDs, and empty elements. Returns cleaned HTML as string."""
@@ -21,8 +59,8 @@ def filter_response(html_content: str) -> str:
             el.drop_tree()
 
     # classes and IDs to remove
-    classes_to_remove = [
-        "open-readspeaker-ui", "banner", "cookie-consent", 
+    classes_and_ids_to_remove = [
+        "open-readspeaker-ui", "banner", "cookie", 
         "nav-item dropdown", "clearfix navnavbar-nav",
         "clearfix menu menu-level-0", "sidebar", 
         "views-field views-field-link__uri", 
@@ -30,45 +68,113 @@ def filter_response(html_content: str) -> str:
         "visually-hidden-focusable", "clearfix dropdown-menu", "nav-link",
         "field__label visually-hidden", "field field--name-field-media-image field--type-image field--label-visually_hidden",
         "clearfix nav", "modal modal-search fade", "breadcrumb", "btn dropdown-toggle",
-        "block block-menu navigation menu--menu-target", "view-content row"
+        "block block-menu navigation menu--menu-target", "view-content row", "nice-menus", "block-menu-block", "menuleft_rwd_liv_top",
+        "main-header", "footer-container", "openclose", "links"
     ]
-    ids_to_remove = ["main-header", "footer-container"]
 
-    for class_name in classes_to_remove:
-        for el in tree.xpath(f'//*[@class="{class_name}"]'):
-            el.drop_tree()
-    for id_name in ids_to_remove:
-        for el in tree.xpath(f'//*[@id="{id_name}"]'):
-            el.drop_tree()
+    """remove specific classes and ids from the HTML tree"""
+    # for class_name in classes_to_remove:
+    #     for el in tree.xpath(f'//*[@class="{class_name}"]'):
+    #         el.drop_tree()
+    # for id_name in ids_to_remove:
+    #     for el in tree.xpath(f'//*[@id="{id_name}"]'):
+    #         el.drop_tree()
 
-    # convert tree to string and remove empty tags
-    cleaned_html = html.tostring(tree, encoding="unicode")
-    soup = BeautifulSoup(cleaned_html, "lxml")
+    """remove elements by class or id containing specific substrings (case-insensitive)"""
+    for name in classes_and_ids_to_remove:
+        # case-insensitive usando translate
+        for el in tree.xpath(f'//*[contains(translate(@class, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "{name.lower()}")]'):
+            el.drop_tree()
+    for name in classes_and_ids_to_remove:
+        # case-insensitive usando translate
+        for el in tree.xpath(f'//*[contains(translate(@id, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "{name.lower()}")]'):
+            el.drop_tree()
+    for el in tree.xpath('//label[@for]'):
+        el.drop_tree()
+
+    soup = BeautifulSoup(html.tostring(tree, encoding="unicode"), "lxml")
+
     for strong_tag in soup.find_all("strong"):
         strong_tag.unwrap()
     for tag in soup.find_all():
         if not tag.get_text(strip=True):
             tag.decompose()
 
+    for nav in soup.find_all("nav"):
+        # ignora nav con contenuto significativo
+        significant = nav.find(["p", "div", "ul", "ol", "table"])
+        if not significant:
+            nav.decompose()  # rimuove anche il titolo se non c'è altro
+
     return str(soup)
 
-def is_informative_markdown(text: str) -> bool:
-    """Returns True if the text is considered informative, False otherwise."""
-    # remove markdown titles
+def normalize_markdown(text: str) -> str:
+    """Normalize special characters to avoid JSON issues."""
+    if not text:
+        return text
+
+    replacements = {
+        "’": "'",
+        "‘": "'",
+        "“": '"',
+        "”": '"',
+        "–": "-",
+        "—": "-",
+        "…": "...",
+        "\u00A0": " ",  # non-breaking space
+    }
+
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+    return unicodedata.normalize("NFKC", text)
+
+def is_informative_markdown(
+    text: str,
+    min_words_total: int = 30,
+    min_lines: int = 3,
+    min_words_per_line: int = 5,
+    min_unique_ratio: float = 0.6
+) -> bool:
+    """Return True if the text is considered informative, False otherwise."""
+    text = normalize_markdown(text)
+    
+    # 1. Remove markdown headers
     cleaned = re.sub(r'#+\s*.*', '', text)
-    # remove common footer/header phrases
-    cleaned = re.sub(
-        r'\b(Tutti gli avvisi|Link utili|Contatti|Servizi|Servizi digitali|Servizi di segreteria|Dipartimenti|Vai alla pagina)\b',
-        '', cleaned, flags=re.IGNORECASE
-    )
-    # divide into lines and keep meaningful ones (>=2 words)
+    
+    # 2. Remove common footer/header phrases and standard patterns
+    patterns = [
+        r'\b(Tutti gli avvisi|Link utili|Contatti|Servizi|Servizi digitali|Servizi di segreteria|Dipartimenti|Vai alla pagina|Visualizzazione e prenotazioni aule|Caselle di posta condivise|Calendario google|Sicurezza in dipartimento|Università degli studi di [^\n]+)\b',
+        r'\b(©\d{4}.*|P\.IVA.*|C\.F\..*|PEC:.*|Fatturazione elettronica)\b',
+        r'\b(Privacy|Mappa sito|Dove siamo|Ultimo aggiornamento:.*)\b',
+        r'\b(mailto:.*|http[s]?://[^\s]+)\b'
+    ]
+    for pattern in patterns:
+        cleaned = re.sub(pattern, '', cleaned, flags=re.IGNORECASE)
+
+    # 3. Split into lines and remove empty or too short lines
     lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
-    meaningful_lines = [line for line in lines if len(line.split()) >= 2]
-    # count total words
+    meaningful_lines = [
+        line for line in lines 
+        if len(line.split()) >= min_words_per_line and not re.match(r'^[\*\-_\\]+$', line)
+    ]
+
+    # 4. Check if there are enough meaningful lines
+    if len(meaningful_lines) < min_lines:
+        return False
+
+    # 5. Count total words
     cleaned_text = " ".join(meaningful_lines)
-    word_count = len(cleaned_text.split())
-    # criteria: at least 20 words total and at least 2 meaningful lines
-    return word_count > 20 and len(meaningful_lines) > 1
+    words = cleaned_text.split()
+    if len(words) < min_words_total:
+        return False
+
+    # 6. Check lexical richness (ratio of unique words)
+    word_counts = Counter(words)
+    unique_ratio = len(word_counts) / len(words)
+    if unique_ratio < min_unique_ratio:
+        return False
+
+    return True
 
 def normalize_markdown(text: str) -> str:
     """Normalizes special unicode characters to avoid JSON issues."""
@@ -121,6 +227,9 @@ def process_line(line):
         md_content = parse_html_content_html2text(cleaned_html)
         if is_informative_markdown(md_content):
             item["content"] = md_content
+            save_filtered_html_to_file(url, cleaned_html)
+            save_md_to_file(url, md_content)
+
             return item, "saved"
         else:
             return None, "skipped"
@@ -169,5 +278,13 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=str, default="filtered_items.jsonl", help="Output JSONL file")
     parser.add_argument("--verbose", action="store_true", help="Enable detailed logging")
     args = parser.parse_args()
+
+    if os.path.exists(output_dir_FILTERED_HTML):
+        shutil.rmtree(output_dir_FILTERED_HTML)
+        os.makedirs(output_dir_FILTERED_HTML)
+
+    if os.path.exists(output_dir_CLEANED_MD):
+        shutil.rmtree(output_dir_CLEANED_MD)
+        os.makedirs(output_dir_CLEANED_MD)
 
     main(args.input, args.output, args.verbose)

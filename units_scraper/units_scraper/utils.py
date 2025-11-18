@@ -66,6 +66,7 @@ deny_regex = [
     r".*facebook.*",
     r".*instagram.*",
     r".*notizie.*",
+    # r".*ricerca/progetti.*", # there are a lot of research projects, maybe useful
 ]
 
 def format_time(seconds: float) -> str:
@@ -166,17 +167,11 @@ def parse_html_content_html2text(response) -> str:
     #print(f"Cleaned content: {text}")
     return normalize_markdown(text)
 
-def save_webpage_to_file(html_content, parsed_content, url, counter, output_dir):
+def save_webpage_to_file(html_content, url, counter, output_dir):
     os.makedirs(output_dir, exist_ok=True)
-    # original_path = os.path.join(output_dir, f"{counter}_filtered.html")
-    # with open(original_path, "w", encoding="utf-8") as f:
-    #     f.write(html_content)
-
-    parsed_url = urlparse(url)
-    domain = parsed_url.netloc
-    cleaned_path = os.path.join(output_dir, f"{counter}_{domain}.md")
-    with open(cleaned_path, "w", encoding="utf-8") as f:
-        f.write(parsed_content)
+    original_path = os.path.join(output_dir, f"{counter}_original.html")
+    with open(original_path, "w", encoding="utf-8") as f:
+        f.write(html_content)
 
 def get_article_date(response):
     # Estrai le date dai meta tag

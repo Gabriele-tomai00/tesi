@@ -32,6 +32,7 @@ class ScraperSpider(CrawlSpider):
             print_log(response, self.counter, self.crawler.settings)
             metadata = get_metadata(response)
             self.counter += 1
+            save_webpage_to_file(response.text, response.url, self.counter, "../results/html_output/")
             yield {
                 "title": metadata["title"],
                 "url": response.url,
