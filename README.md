@@ -65,7 +65,7 @@ da eseguire dopo lo scraping
 ```
 Opzioni:
 ```
---create-index    creare l'index da salvare su disco (lento)
---delete-index    cancellare l'index
--m                forumare il messaggio
+--create-index-from     file di input per creare l'index da salvare su disco (lento) (es: create-index-from="../results/filtered_items.jsonl")
+--delete-index          cancellare l'index
+-m                      forumare il messaggio
 ```

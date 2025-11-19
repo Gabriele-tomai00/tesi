@@ -59,9 +59,10 @@ async def main():
         help="Delete the existing RAG index and exit."
     )
     parser.add_argument(
-        "--create-index",
-        action="store_true",
-        help="Create the index from items.jsonl and exit."
+        "--create-index-from",
+        type=str,
+        default="../results/filtered_items.jsonl",
+        help="Input JSONL file"
     )
 
     args = parser.parse_args()
@@ -74,9 +75,9 @@ async def main():
         return
 
     # === Option 2: Create index ===
-    if args.create_index:
-        print("Creating a new index from items.jsonl...")
-        create_index("rag_index", "../items.jsonl")
+    if args.create_index_from:
+        print("Creating a new index from file:", args.create_index_from)
+        create_index("rag_index", args.create_index_from)
         return
 
     # === Option 3: Direct search ===
